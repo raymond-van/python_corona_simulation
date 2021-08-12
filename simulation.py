@@ -13,30 +13,31 @@ from motion import update_positions, out_of_bounds, update_randoms,\
 get_motion_parameters
 from path_planning import go_to_location, set_destination, check_at_destination,\
 keep_at_destination, reset_destinations
-from population import initialize_population, initialize_destination_matrix,\
-set_destination_bounds, save_data, save_population, Population_trackers
+from population import save_data, save_population, Population_trackers, PopulationAdapter
 from visualiser import build_fig, draw_tstep, set_style, plot_sir
 
 #set seed for reproducibility
 #np.random.seed(100)
 
-# i'm supposed to make productive changes so this is going to be a
-# productive comment. YAY!
-
-class Simulation():
+class Simulation(PopulationAdapter):
     #TODO: if lockdown or otherwise stopped: destination -1 means no motion
     def __init__(self, *args, **kwargs):
         #load default config data
         self.Config = Configuration(*args, **kwargs)
         self.frame = 0
 
+        #instantiate Population Adapter
+        self.PopulationAdapter = PopulationAdapter(self.Config)
+
         #initialize default population
-        self.population_init()
+        self.population = self.PopulationAdapter.initialize_population(self.Config.mean_age,
+                                                self.Config.max_age, self.Config.xbounds,
+                                                self.Config.ybounds)
+
+        #initalize destinations vector
+        self.destinations = self.PopulationAdapter.initialize_destination_matrix(self.Config.pop_size, total_destinations=1)
 
         self.pop_tracker = Population_trackers()
-
-        #initalise destinations vector
-        self.destinations = initialize_destination_matrix(self.Config.pop_size, 1)
 
 
     def reinitialise(self):
@@ -45,15 +46,14 @@ class Simulation():
         self.frame = 0
         self.population_init()
         self.pop_tracker = Population_trackers()
-        self.destinations = initialize_destination_matrix(self.Config.pop_size, 1)
+        self.destinations = PopulationAdapter.initialize_destination_matrix(self.Config.pop_size, 1)
 
 
     def population_init(self):
         '''(re-)initializes population'''
-        self.population = initialize_population(self.Config, self.Config.mean_age,
+        self.population = PopulationAdapter.initialize_population(self.Config.pop_size, self.Config.mean_age,
                                                 self.Config.max_age, self.Config.xbounds,
                                                 self.Config.ybounds)
-
 
     def tstep(self):
         '''
